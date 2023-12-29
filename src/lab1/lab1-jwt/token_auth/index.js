@@ -63,9 +63,9 @@ class Session {
 const sessions = new Session();
 
 app.use((req, res, next) => {
+    let sessionId;
     let currentSession = {};
     let token = req.get(SESSION_KEY);
-    console.log(token);
 
     if (token) {
         const decoded = jwt.verify(token, TOKEN_SECRET);
@@ -74,13 +74,15 @@ app.use((req, res, next) => {
         if (!currentSession) {
             currentSession = {};
             sessionId = sessions.init(res);
+        } else {
+            delete res.sessionId;
+            delete res.session;
         }
     } else {
         sessionId = sessions.init(res);
+        req.session = currentSession;
+        req.sessionId = sessionId;
     }
-
-    req.session = currentSession;
-    req.sessionId = sessionId;
 
     onFinished(req, () => {
         const currentSession = req.session;
@@ -94,13 +96,15 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
     const token = req.get(SESSION_KEY);
     if (token) {
-
-    }
-    if (req.session.username) {
-        return res.json({
-            username: req.session.username,
-            logout: 'http://localhost:3000/logout'
-        })
+        const decoded = jwt.verify(token, TOKEN_SECRET);
+        const sessionId = decoded.sessionId;
+        const sessionData = sessions.get(sessionId);
+        if (sessionData) {
+            return res.json({
+                username: sessionData.username,
+                logout: 'http://localhost:3000/logout'
+            });
+        }
     }
     res.sendFile(path.join(__dirname+'/index.html'));
 })
@@ -134,7 +138,10 @@ app.post('/api/login', (req, res) => {
     });
 
     if (user) {
-        token = jwt.sign({username: user.username, login: user.login}, TOKEN_SECRET);
+        req.session.username = user.username;
+        req.session.login = user.login;
+
+        token = jwt.sign({sessionId: req.sessionId}, TOKEN_SECRET);
         res.json({ token: token });
     }
 

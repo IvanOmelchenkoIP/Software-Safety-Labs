@@ -3,7 +3,8 @@ const request = require("request");
 const options = {
   method: "POST",
   url: "https://kpi.eu.auth0.com/oauth/token",
-  headers: { "content-type": "application/x-www-form-urlencoded" },
+  headers: { "content-type": "application/x-www-form-urlencoded",
+ },
   form: {
     client_id: "JIvCO5c2IBHlAe2patn6l6q5H35qxti0",
     client_secret:

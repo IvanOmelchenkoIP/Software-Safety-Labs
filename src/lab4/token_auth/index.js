@@ -94,10 +94,10 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-    if (req.session.username) {
+    const login = req.session.username;
+    if (login) {
         return res.json({
-            username: req.session.username,
-            logout: 'http://localhost:3000/logout'
+            username: login,
         })
     }
     res.sendFile(path.join(__dirname+'/index.html'));
@@ -130,13 +130,18 @@ app.post('/api/login', (req, res) => {
     request(options, (error, response, body) => {
         if (error) {
             res.status(401).send();
+            return;
         } else {
             const bodyParsed = JSON.parse(body);
             const bodyError = bodyParsed["error"];
-            if (bodyError) res.status(401).send();
-            req.session.username = login;
-            req.session.access_token = bodyParsed["access_token"];
-            res.json({ token: req.sessionId });
+            if (bodyError) {
+                res.status(401).send();
+                return;
+            } else {
+                req.session.username = login;
+                req.session.access_token = bodyParsed["access_token"];
+                res.json({ token: req.sessionId });
+            }
         }
     }); 
 });

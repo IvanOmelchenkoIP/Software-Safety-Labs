@@ -12,16 +12,26 @@
         <main id="main-holder">
             <a href="/logout" id="logout">Logout</a>
 
-            <h1 id="login-header">Login</h1>
+            <h1 class="login-heared" id="login-header">Login</h1>
+            <h1 class="register-header display-none" id="register-header">Register</h1>
 
             <div id="login-error-msg-holder">
                 <p id="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
             </div>
 
-            <form id="login-form" action="/api/login" method="post">
-                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Username">
+            <form class="login-form" id="login-form" action="/api/login" method="post">
+                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Email">
                 <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
-                <input type="submit" value="Login" id="login-form-submit">
+                <input type="submit" class="form-submit" value="Login" id="login-form-submit">
+                <button class="switch-auth" id="go-to-register">Go to Registration</button>
+            </form>
+
+            <form class="login-form display-none" id="register-form" action="/api/register" mathod="post">
+                <input type="text" name="email" id="register-username-field" class="login-form-field" placeholder="Email">
+                <input type="text" name="login" id="register-email-field" class="login-form-field" placeholder="Username">
+                <input type="password" name="password" id="register-password-field" class="login-form-field" placeholder="Password">
+                <input type="submit" class="form-submit" value="Register" id="register-form-submit">
+                <button class="switch-auth" id="go-to-login">Go to Login</button>
             </form>
 
         </main>
@@ -83,7 +93,7 @@
             display: block;
         }
 
-        #login-form {
+        .login-form {
             align-self: flex-start;
             display: grid;
             justify-items: center;
@@ -103,7 +113,7 @@
             padding: 0px 0px 5px 5px;
         }
 
-        #login-form-submit {
+        .form-submit {
             width: 100%;
             padding: 7px;
             border: none;
@@ -113,6 +123,20 @@
             background-color: #3a3a3a;
             cursor: pointer;
             outline: none;
+        }
+
+        .switch-auth {
+            background: none;
+            border: none;
+            margin-top: 0.6rem;
+        }
+
+        .switch-auth:hover {
+            text-decoration: underline;
+        }
+
+        .display-none {
+            display: none;
         }
     </style>
 
@@ -131,15 +155,26 @@
                     Authorization: token
                 }
             }).then((response) => {
-                const { username } = response.data;
+                const { username, expired, refresh } = response.data;
+
+                if (expired) {
+                    axios.get('/logout');
+                }
+
+                if (refresh) {
+                    axios.post('/refresh').then((response) => {
+                        location.reload();
+                    }).catch((error) => {});
+                }
 
                 if (username) {
                     const mainHolder = document.getElementById("main-holder");
-                    const loginHeader = document.getElementById("login-header");
-
+                    
                     loginForm.remove();
+                    registerForm.remove();
                     loginErrorMsg.remove();
                     loginHeader.remove();
+                    registerHeader.remove();
 
                     mainHolder.append(`Hello ${username}`);
                     logoutLink.style.opacity = 1;
@@ -148,10 +183,19 @@
         }
 
 
+        const loginHeader = document.getElementById("login-header");
+        const registerHeader = document.getElementById("register-header")
+
         const loginForm = document.getElementById("login-form");
         const loginButton = document.getElementById("login-form-submit");
         const loginErrorMsg = document.getElementById("login-error-msg");
         const logoutLink =  document.getElementById("logout");
+
+        const registerForm = document.getElementById("register-form");
+        const registerButton = document.getElementById("register-form-submit");
+
+        const switchToRegisterButton = document.getElementById("go-to-register");
+        const switchToLoginButton = document.getElementById("go-to-login");
 
         logoutLink.addEventListener("click", (e) => {
             e.preventDefault();
@@ -159,11 +203,26 @@
             location.reload();
         });
 
+        switchToRegisterButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            loginHeader.classList.add("display-none");
+            registerHeader.classList.remove("display-none");
+            loginForm.classList.add("display-none");
+            registerForm.classList.remove("display-none");
+        });
+
+        switchToLoginButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            loginHeader.classList.remove("display-none");
+            registerHeader.classList.add("display-none");
+            loginForm.classList.remove("display-none");
+            registerForm.classList.add("display-none");
+        });
+
         loginButton.addEventListener("click", (e) => {
             e.preventDefault();
             const login = loginForm.login.value;
             const password = loginForm.password.value;
-
 
             axios({
                 method: 'post',
@@ -179,6 +238,41 @@
             }).catch((response) => {
                 loginErrorMsg.style.opacity = 1;
             });
-        })
+        });
+
+        registerButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            const email = registerForm.email.value;
+            const login = registerForm.login.value;
+            const password = registerForm.password.value;
+
+            axios({
+                method: 'post',
+                url: '/api/register',
+                data: {
+                    email,
+                    login,
+                    password
+                }
+            }).then((response) => {
+                const { login, password  } =  response.data;
+                axios({
+                    method: 'post',
+                    url: '/api/login',
+                    data: {
+                        login,
+                        password
+                    }
+                }).then((response) => {
+                    const { username } =  response.data;
+                    sessionStorage.setItem('session', JSON.stringify(response.data));
+                    location.reload();
+                }).catch((response) => {
+                    loginErrorMsg.style.opacity = 1;
+                });
+            }).catch((response) => {
+                loginErrorMsg.style.opacity = 1;
+            });
+        });
     </script>
 </html>

@@ -141,7 +141,7 @@ app.post('/api/login', (req, res) => {
         req.session.username = user.username;
         req.session.login = user.login;
 
-        token = jwt.sign({sessionId: req.sessionId}, TOKEN_SECRET);
+        const token = jwt.sign({sessionId: req.sessionId}, TOKEN_SECRET);
         res.json({ token: token });
     }
 

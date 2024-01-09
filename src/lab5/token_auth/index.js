@@ -7,6 +7,7 @@ const port = 3000;
 const fs = require('fs');
 const request = require('request');
 const { auth } = require('express-oauth2-jwt-bearer');
+
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -103,52 +104,52 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-    const username = req.session.username;
-    if (username) {
-        const payload = req.session.access_token.toString().split(".")[1];
+    const login = req.session.username;
+    const access_token = req.session.access_token;
+    if (login && access_token) {
+        const payload = access_token.toString().split(".")[1];
         const payloadParsed = JSON.parse(atob(payload));
         const expireTime = Number(payloadParsed["exp"]);
         const timeNow = new Date().getTime();
         const fiveMinsFromNow = timeNow + FIVE_MINUTES;
-        const fiveMinutesPriorToExpire = expireTime - FIVE_MINUTES;
-        const access_token = req.session.access_token;
+        const fiveMinutesPriorToExpire = expireTime - FIVE_MINUTES
         if (expireTime <= timeNow) {
             return res.json({
+                username: login,
                 access_token: access_token,
                 expired: true,
-                refresh: false,
+                refresh_token: null,
             });
         }
         if (fiveMinutesPriorToExpire <= fiveMinsFromNow) {
             return res.json({
+                username: login,
                 access_token: access_token,
                 expired: false,
-                refresh: true,
+                refresh_token: req.session.refresh_token,
             });
         }
         return res.json({
+            username: login,
             access_token: access_token,
             expired: false,
-            refresh: false,
+            refresh_token: null,
         });
     }
     res.sendFile(path.join(__dirname+'/index.html'));
-});
-
-app.get('/user',/*, checkJwt,*/ (req, res) => {
-    console.log(req.body);
-    console.log(req.session.username);
-    res.json({ username: req.session.username });
-});
+})
 
 app.get('/logout', (req, res) => {
     sessions.destroy(req, res);
     res.redirect('/');
 });
 
-
+app.post("/token/verify", checkJwt, (req, res) => {
+    res.status(200).send();
+});
 
 app.post('/refresh', checkJwt, (req, res) => {
+    const { refresh_token } = req.body();
     const options = {
         method: "POST",
         url: "https://dev-vhjl4amz310prjx7.us.auth0.com/oauth/token",
@@ -159,7 +160,7 @@ app.post('/refresh', checkJwt, (req, res) => {
             grant_type: "refresh_token",
             client_id: AUTH0_CONFIG.CLIENT_ID,
             client_secret: AUTH0_CONFIG.CLIENT_SECRET,
-            refresh_token: req.session.refresh_token,
+            refresh_token: refresh_token,
             scope: "update:users"
         }
     }
